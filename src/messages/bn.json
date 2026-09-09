@@ -1,0 +1,52 @@
+{
+  "Common": {
+    "login": "লগইন",
+    "logout": "লগআউট",
+    "dashboard": "ড্যাশবোর্ড",
+    "projects": "প্রকল্পসমূহ",
+    "buildings": "ভবনসমূহ",
+    "families": "পরিবারসমূহ",
+    "collection": "সংগ্রহ",
+    "receipts": "রশিদ",
+    "tobruk": "তবরুক বিতরণ",
+    "reports": "রিপোর্ট",
+    "users": "ব্যবহারকারী",
+    "settings": "সেটিংস",
+    "save": "সংরক্ষণ করুন",
+    "cancel": "বাতিল করুন",
+    "edit": "সম্পাদনা",
+    "delete": "মুছুন",
+    "add": "যুক্ত করুন",
+    "search": "অনুসন্ধান...",
+    "email": "ইমেইল ঠিকানা",
+    "password": "পাসওয়ার্ড",
+    "welcome": "তৌজি মেকারে স্বাগতম"
+  },
+  "Dashboard": {
+    "title": "ড্যাশবোর্ড",
+    "totalBuildings": "মোট ভবন",
+    "totalFamilies": "মোট পরিবার",
+    "totalCollection": "মোট সংগ্রহ",
+    "tobrukDistributed": "তবরুক বিতরণ",
+    "collectionProgress": "সংগ্রহের অগ্রগতি",
+    "collectionByAmount": "পরিমাণ অনুযায়ী সংগ্রহ",
+    "recentActivity": "সাম্প্রতিক কার্যকলাপ"
+  },
+  "Buildings": {
+    "title": "ভবনসমূহ",
+    "addBuilding": "ভবন যুক্ত করুন",
+    "sequence": "ক্রম",
+    "nameEn": "নাম (ইংরেজি)",
+    "nameBn": "নাম (বাংলা)",
+    "families": "পরিবার",
+    "status": "স্ট্যাটাস"
+  },
+  "Collection": {
+    "title": "সংগ্রহ মোড",
+    "startCollection": "সংগ্রহ শুরু করুন",
+    "quickAmount": "দ্রুত পরিমাণ",
+    "otherAmount": "অন্যান্য পরিমাণ",
+    "collected": "সংগৃহীত",
+    "pending": "বকেয়া"
+  }
+}

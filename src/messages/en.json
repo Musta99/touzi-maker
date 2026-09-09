@@ -1,0 +1,52 @@
+{
+  "Common": {
+    "login": "Login",
+    "logout": "Logout",
+    "dashboard": "Dashboard",
+    "projects": "Projects",
+    "buildings": "Buildings",
+    "families": "Families",
+    "collection": "Collection",
+    "receipts": "Receipts",
+    "tobruk": "Tobruk Distribution",
+    "reports": "Reports",
+    "users": "Users",
+    "settings": "Settings",
+    "save": "Save",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "delete": "Delete",
+    "add": "Add",
+    "search": "Search...",
+    "email": "Email Address",
+    "password": "Password",
+    "welcome": "Welcome to Touzi Maker"
+  },
+  "Dashboard": {
+    "title": "Dashboard",
+    "totalBuildings": "Total Buildings",
+    "totalFamilies": "Total Families",
+    "totalCollection": "Total Collection",
+    "tobrukDistributed": "Tobruk Distributed",
+    "collectionProgress": "Collection Progress",
+    "collectionByAmount": "Collection by Amount",
+    "recentActivity": "Recent Activity"
+  },
+  "Buildings": {
+    "title": "Buildings",
+    "addBuilding": "Add Building",
+    "sequence": "Sequence",
+    "nameEn": "Name (English)",
+    "nameBn": "Name (Bengali)",
+    "families": "Families",
+    "status": "Status"
+  },
+  "Collection": {
+    "title": "Collection Mode",
+    "startCollection": "Start Collection",
+    "quickAmount": "Quick Amount",
+    "otherAmount": "Other Amount",
+    "collected": "Collected",
+    "pending": "Pending"
+  }
+}
