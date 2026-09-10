@@ -7,6 +7,9 @@ import { revalidatePath } from "next/cache";
 
 export async function getBuildings() {
   const allBuildings = await db.query.buildings.findMany({
+    with: {
+      area: true,
+    },
     orderBy: [asc(buildings.sequenceOrder)],
   });
 
@@ -31,7 +34,7 @@ export async function getBuildings() {
 
 
 const standardFloors = [
-  { en: "Ground Floor", bn: "নিচ তলা" },
+  { en: "Ground Floor",    bn: "নিচ তলা" },
   { en: "1st Floor",    bn: "দ্বিতীয় তলা" },
   { en: "2nd Floor",    bn: "তৃতীয় তলা" },
   { en: "3rd Floor",    bn: "চতুর্থ তলা" },
@@ -42,7 +45,7 @@ const standardFloors = [
   { en: "8th Floor",    bn: "নবম তলা" },
 ];
 
-export async function addBuilding(data: { nameEn: string; nameBn: string; sequenceOrder: number; insertAfterOrder?: number }) {
+export async function addBuilding(data: { nameEn: string; nameBn: string; sequenceOrder: number; areaId?: string | null; insertAfterOrder?: number }) {
   // If inserting at a specific position, shift all buildings at or after that position
   if (data.insertAfterOrder !== undefined) {
     const targetOrder = data.insertAfterOrder + 1;
@@ -59,18 +62,20 @@ export async function addBuilding(data: { nameEn: string; nameBn: string; sequen
       await db.update(buildings)
         .set({ 
           sequenceOrder: b.sequenceOrder + 1,
-          nameEn: `Building ${b.sequenceOrder + 1}`
         })
         .where(eq(buildings.id, b.id));
     }
 
     data.sequenceOrder = targetOrder;
-    data.nameEn = `Building ${targetOrder}`;
+    if (!data.nameEn) {
+      data.nameEn = `Building ${targetOrder}`;
+    }
   }
 
   const [newBuilding] = await db.insert(buildings).values({
     nameEn: data.nameEn,
     nameBn: data.nameBn,
+    areaId: data.areaId || null,
     sequenceOrder: data.sequenceOrder,
     isActive: true,
   }).returning();
@@ -102,11 +107,18 @@ export async function getFloorsByBuilding(buildingId: string) {
   });
 }
 
-export async function updateBuilding(id: string, data: { nameBn: string }) {
-  await db.update(buildings)
-    .set({ nameBn: data.nameBn })
-    .where(eq(buildings.id, id));
-  revalidatePath("/[locale]/buildings", "page");
+export async function updateBuilding(id: string, data: { nameBn?: string; nameEn?: string; areaId?: string | null }) {
+  const updateData: Record<string, any> = {};
+  if (data.nameBn !== undefined) updateData.nameBn = data.nameBn;
+  if (data.nameEn !== undefined) updateData.nameEn = data.nameEn;
+  if (data.areaId !== undefined) updateData.areaId = data.areaId;
+
+  if (Object.keys(updateData).length > 0) {
+    await db.update(buildings)
+      .set(updateData)
+      .where(eq(buildings.id, id));
+    revalidatePath("/[locale]/buildings", "page");
+  }
 }
 
 export async function deleteBuilding(id: string) {

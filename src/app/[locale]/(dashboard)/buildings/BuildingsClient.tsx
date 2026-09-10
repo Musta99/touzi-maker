@@ -2,7 +2,7 @@
 
 import { useT } from "@/lib/i18n/TranslationProvider";
 import { useState } from "react";
-import { Plus, Eye, X, Pencil, Trash2, Loader2, Search } from "lucide-react";
+import { Plus, Eye, X, Pencil, Trash2, Loader2, Search, Building2 } from "lucide-react";
 import Link from "next/link";
 import {
   addBuilding,
@@ -11,12 +11,21 @@ import {
   deleteBuilding,
 } from "@/app/actions/buildings";
 import BanglaInput from "@/components/BanglaInput";
+import { addArea, getAreas } from "@/app/actions/areas";
+
+type Area = {
+  id: string;
+  nameBn: string;
+  nameEn: string;
+};
 
 type Building = {
   id: string;
   sequenceOrder: number;
   nameEn: string;
   nameBn: string;
+  areaId: string | null;
+  area: Area | null;
   isActive: boolean;
   floorCount: number | null;
   flatCount: number | null;
@@ -24,23 +33,35 @@ type Building = {
 
 export default function BuildingsClient({
   initialBuildings,
+  initialAreas,
 }: {
   initialBuildings: Building[];
+  initialAreas: Area[];
 }) {
   const { t } = useT();
   const [buildings, setBuildings] = useState<Building[]>(initialBuildings);
+  const [areasList, setAreasList] = useState<Area[]>(initialAreas);
   const [searchTerm, setSearchTerm] = useState("");
 
   // ── Add modal ────────────────────────────────────────────────────
   const [showAddModal, setShowAddModal] = useState(false);
   const [nameBn, setNameBn] = useState("");
+  const [areaId, setAreaId] = useState<string>("");
   const [insertAfter, setInsertAfter] = useState("end");
   const [saving, setSaving] = useState(false);
 
   // ── Edit modal ───────────────────────────────────────────────────
   const [editTarget, setEditTarget] = useState<Building | null>(null);
   const [editNameBn, setEditNameBn] = useState("");
+  const [editNameEn, setEditNameEn] = useState("");
+  const [editAreaId, setEditAreaId] = useState<string>("");
   const [editSaving, setEditSaving] = useState(false);
+
+  // ── Add Area modal ──────────────────────────────────────────────
+  const [showAddAreaModal, setShowAddAreaModal] = useState(false);
+  const [newAreaNameBn, setNewAreaNameBn] = useState("");
+  const [newAreaNameEn, setNewAreaNameEn] = useState("");
+  const [addingArea, setAddingArea] = useState(false);
 
   // ── Delete modal ─────────────────────────────────────────────────
   const [deleteTarget, setDeleteTarget] = useState<Building | null>(null);
@@ -52,11 +73,45 @@ export default function BuildingsClient({
     setBuildings(fresh as Building[]);
   };
 
+  const refreshAreas = async () => {
+    const freshAreas = await getAreas();
+    setAreasList(freshAreas);
+    return freshAreas;
+  };
+
+  const handleAddNewArea = async () => {
+    const trimmed = newAreaNameBn.trim();
+    if (!trimmed) return;
+    setAddingArea(true);
+    try {
+      const created = await addArea({
+        nameBn: trimmed,
+        nameEn: newAreaNameEn.trim(),
+      });
+      await refreshAreas();
+      if (editTarget) {
+        setEditAreaId(created.id);
+      } else {
+        setAreaId(created.id);
+      }
+      setShowAddAreaModal(false);
+      setNewAreaNameBn("");
+      setNewAreaNameEn("");
+    } catch (e) {
+      console.error(e);
+      alert("Failed to add area option");
+    } finally {
+      setAddingArea(false);
+    }
+  };
+
   const filteredBuildings = buildings.filter((b) => {
     const q = searchTerm.toLowerCase();
     return (
       (b.nameBn && b.nameBn.toLowerCase().includes(q)) ||
-      (b.nameEn && b.nameEn.toLowerCase().includes(q))
+      (b.nameEn && b.nameEn.toLowerCase().includes(q)) ||
+      (b.area?.nameBn && b.area.nameBn.toLowerCase().includes(q)) ||
+      (b.area?.nameEn && b.area.nameEn.toLowerCase().includes(q))
     );
   });
 
@@ -75,6 +130,7 @@ export default function BuildingsClient({
         await addBuilding({
           nameEn: `Building ${nextSeq}`,
           nameBn: trimmed,
+          areaId: areaId || null,
           sequenceOrder: nextSeq,
         });
       } else {
@@ -82,11 +138,13 @@ export default function BuildingsClient({
         await addBuilding({
           nameEn: "",
           nameBn: trimmed,
+          areaId: areaId || null,
           sequenceOrder: 0,
           insertAfterOrder: afterOrder,
         });
       }
       setNameBn("");
+      setAreaId("");
       setInsertAfter("end");
       setShowAddModal(false);
       await refreshBuildings();
@@ -103,9 +161,15 @@ export default function BuildingsClient({
     if (!editTarget || !editNameBn.trim()) return;
     setEditSaving(true);
     try {
-      await updateBuilding(editTarget.id, { nameBn: editNameBn.trim() });
+      await updateBuilding(editTarget.id, { 
+        nameBn: editNameBn.trim(),
+        nameEn: editNameEn.trim(),
+        areaId: editAreaId || null,
+      });
       setEditTarget(null);
       setEditNameBn("");
+      setEditNameEn("");
+      setEditAreaId("");
       await refreshBuildings();
     } catch (e: any) {
       alert(e.message || "Failed to update building");
@@ -138,62 +202,67 @@ export default function BuildingsClient({
         </h1>
         <button
           onClick={() => setShowAddModal(true)}
-          className="flex items-center px-4 py-2 bg-primary text-white rounded-md hover:bg-green-700 transition-colors text-sm"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary hover:bg-green-700 text-white font-medium text-sm rounded-lg shadow-sm transition-colors"
         >
-          <Plus className="mr-2 h-4 w-4" />
-          {t("Buildings.addBuilding")}
+          <Plus className="w-4 h-4" />
+          বিল্ডিং যোগ করুন
         </button>
       </div>
 
-      {/* Dual Language Search Bar */}
-      <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm space-y-2">
-        <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-          Search Building
-        </label>
-        <BanglaInput
-          value={searchTerm}
-          onChange={setSearchTerm}
-          className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
-          placeholder="Search building name (e.g. 'al mostafa' / 'আল মোস্তফা' or English)..."
-        />
+      {/* Search & Stats */}
+      <div className="flex flex-col sm:flex-row gap-4 justify-between items-stretch sm:items-center">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="বিল্ডিং এর নাম বা এলাকা অনুসন্ধান করুন..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+          />
+        </div>
+        <div className="text-sm text-gray-500 dark:text-gray-400 font-medium">
+          মোট বিল্ডিং: {buildings.length}
+        </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-white dark:bg-gray-800 shadow-sm rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700">
+      {/* Buildings Table */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-50 dark:bg-gray-900/50">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-12">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50">
+                <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-12">
                   #
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  {t("Buildings.nameBn")}
+                <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  বিল্ডিং এর নাম (বাংলা)
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden sm:table-cell">
-                  {t("Buildings.nameEn")}
+                <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden sm:table-cell">
+                  Name (English)
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden md:table-cell">
+                <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  অবস্থান / এলাকা
+                </th>
+                <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden md:table-cell">
                   Flats
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  {t("Buildings.status")}
+                <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Status
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {filteredBuildings.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={6}
+                    colSpan={7}
                     className="px-4 py-12 text-center text-gray-500 dark:text-gray-400"
                   >
-                    {buildings.length === 0
-                      ? "No buildings yet. Add your first building."
-                      : `No buildings match "${searchTerm}".`}
+                    কোন বিল্ডিং পাওয়া যায়নি
                   </td>
                 </tr>
               ) : (
@@ -221,6 +290,15 @@ export default function BuildingsClient({
                         {b.nameEn}
                       </Link>
                     </td>
+                    <td className="px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {b.area ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                          {b.area.nameBn}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400 italic text-xs">—</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-300 hidden md:table-cell font-medium">
                       {b.flatCount ?? 0}
                     </td>
@@ -242,6 +320,8 @@ export default function BuildingsClient({
                           onClick={() => {
                             setEditTarget(b);
                             setEditNameBn(b.nameBn);
+                            setEditNameEn(b.nameEn || "");
+                            setEditAreaId(b.areaId || "");
                           }}
                           title="Rename building"
                           className="p-1.5 text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
@@ -252,17 +332,10 @@ export default function BuildingsClient({
                         <button
                           onClick={() => setDeleteTarget(b)}
                           title="Delete building"
-                          className="p-1.5 text-red-400 hover:text-red-600 dark:hover:text-red-300 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                          className="p-1.5 text-red-500 hover:text-red-700 dark:hover:text-red-300 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
-                        {/* View */}
-                        <Link
-                          href={`./buildings/${b.id}`}
-                          className="ml-1 inline-flex items-center text-sm font-medium text-primary hover:text-green-700 dark:hover:text-green-400"
-                        >
-                          <Eye className="w-4 h-4 mr-1" /> View
-                        </Link>
                       </div>
                     </td>
                   </tr>
@@ -273,20 +346,23 @@ export default function BuildingsClient({
         </div>
       </div>
 
-      {/* ── Add Building Modal ─────────────────────────────────────── */}
+      {/* ── Add Modal ──────────────────────────────────────────────── */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md mx-4 border border-gray-200 dark:border-gray-700 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
-              <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-primary" />
                 নতুন বিল্ডিং যোগ করুন
               </h2>
               <button
                 onClick={() => {
                   setShowAddModal(false);
                   setNameBn("");
+                  setAreaId("");
+                  setInsertAfter("end");
                 }}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -301,17 +377,45 @@ export default function BuildingsClient({
                 <BanglaInput
                   value={nameBn}
                   onChange={setNameBn}
+                  placeholder="যেমন: ফয়েজ ম্যানশন বা foj monsion"
                   onKeyDown={(e) => {
                     if (e.key === "Enter") handleAdd();
                   }}
-                  placeholder="যেমন: al mostafa বা আল মোস্তফা"
                   autoFocus
                   className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-transparent transition-all text-base"
                 />
               </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    বিল্ডিং এর অবস্থান / এলাকা
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddAreaModal(true)}
+                    className="text-xs text-primary font-medium hover:underline flex items-center gap-0.5"
+                  >
+                    + নতুন এলাকা যোগ করুন
+                  </button>
+                </div>
+                <select
+                  value={areaId}
+                  onChange={(e) => setAreaId(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent transition-all text-sm"
+                >
+                  <option value="">-- এলাকা নির্বাচন করুন --</option>
+                  {areasList.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.nameBn} {a.nameEn && a.nameEn !== a.nameBn ? `(${a.nameEn})` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                  কোথায় যোগ করবেন?
+                  বিল্ডিং এর অবস্থান (কোথায় যোগ হবে)
                 </label>
                 <select
                   value={insertAfter}
@@ -332,10 +436,6 @@ export default function BuildingsClient({
                   ))}
                 </select>
               </div>
-              <p className="text-xs text-gray-400 dark:text-gray-500">
-                ৯টি স্ট্যান্ডার্ড ফ্লোর স্বয়ংক্রিয়ভাবে যোগ হবে।
-                পরবর্তী বিল্ডিংগুলোর নম্বর স্বয়ংক্রিয়ভাবে আপডেট হবে।
-              </p>
             </div>
 
             <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
@@ -343,29 +443,31 @@ export default function BuildingsClient({
                 onClick={() => {
                   setShowAddModal(false);
                   setNameBn("");
+                  setAreaId("");
+                  setInsertAfter("end");
                 }}
-                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
               >
                 বাতিল
               </button>
               <button
                 onClick={handleAdd}
                 disabled={!nameBn.trim() || saving}
-                className="px-5 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-5 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 {saving ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <Plus className="w-4 h-4" />
                 )}
-                {saving ? "সংরক্ষণ হচ্ছে..." : "যোগ করুন"}
+                {saving ? "যোগ হচ্ছে..." : "যোগ করুন"}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ── Edit Building Modal ────────────────────────────────────── */}
+      {/* ── Edit Modal ──────────────────────────────────────────────── */}
       {editTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md mx-4 border border-gray-200 dark:border-gray-700 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
@@ -382,20 +484,65 @@ export default function BuildingsClient({
               </button>
             </div>
 
-            <div className="px-6 py-5">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                বিল্ডিং এর নাম (বাংলায়){" "}
-                <span className="text-red-500">*</span>
-              </label>
-              <BanglaInput
-                value={editNameBn}
-                onChange={setEditNameBn}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleEdit();
-                }}
-                autoFocus
-                className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-base"
-              />
+            <div className="px-6 py-5 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  বিল্ডিং এর নাম (বাংলায়){" "}
+                  <span className="text-red-500">*</span>
+                </label>
+                <BanglaInput
+                  value={editNameBn}
+                  onChange={setEditNameBn}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleEdit();
+                  }}
+                  autoFocus
+                  className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-base"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  Building Name (English)
+                </label>
+                <input
+                  type="text"
+                  value={editNameEn}
+                  onChange={(e) => setEditNameEn(e.target.value)}
+                  placeholder="e.g. Building 1"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleEdit();
+                  }}
+                  className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-base"
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    বিল্ডিং এর অবস্থান / এলাকা
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddAreaModal(true)}
+                    className="text-xs text-primary font-medium hover:underline flex items-center gap-0.5"
+                  >
+                    + নতুন এলাকা যোগ করুন
+                  </button>
+                </div>
+                <select
+                  value={editAreaId}
+                  onChange={(e) => setEditAreaId(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm"
+                >
+                  <option value="">-- এলাকা নির্বাচন করুন --</option>
+                  {areasList.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.nameBn} {a.nameEn && a.nameEn !== a.nameBn ? `(${a.nameEn})` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">

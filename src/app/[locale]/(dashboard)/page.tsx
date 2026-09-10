@@ -24,6 +24,7 @@ import {
   Gift,
   Activity,
   TrendingUp,
+  MapPin,
 } from "lucide-react";
 
 // ── Custom chart tooltip ────────────────────────────────────────────
@@ -217,6 +218,51 @@ export default function DashboardPage() {
                 </div>
               );
             })}
+      </div>
+
+      {/* ── Area Breakdown Cards Section ───────────────────────────── */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <MapPin className="h-5 w-5 text-blue-500" />
+            এলাকা ভিত্তিক সংগ্রাহের হিসাব (Area Summary)
+          </h2>
+          <span className="text-xs text-gray-500 font-medium">
+            {stats?.areaBreakdown?.length || 0} টি এলাকা
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {loading ? (
+            Array(3).fill(0).map((_, i) => <SkeletonCard key={i} />)
+          ) : stats?.areaBreakdown?.length === 0 ? (
+            <div className="col-span-full p-6 text-center text-sm text-gray-400 bg-white dark:bg-gray-800 rounded-xl border">
+              কোন এলাকার তথ্য পাওয়া যায়নি
+            </div>
+          ) : (
+            stats?.areaBreakdown?.map((area: any) => (
+              <div
+                key={area.areaId}
+                className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 shadow-sm space-y-3"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                    {area.nameBn}
+                  </span>
+                  <span className="text-xs text-gray-400 font-medium">
+                    {area.familiesCount} টি পরিবার
+                  </span>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">মোট সংগৃহীত অর্থ</p>
+                  <p className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5">
+                    ৳{area.collectedAmount.toLocaleString()}
+                  </p>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </div>
 
       {/* ── Charts Row ──────────────────────────────────────────────── */}
