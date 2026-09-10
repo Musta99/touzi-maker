@@ -1,15 +1,34 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { buildings, floors } from "@/lib/db/schema";
-import { eq, asc } from "drizzle-orm";
+import { buildings, floors, flats, projectFamilies } from "@/lib/db/schema";
+import { eq, asc, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 export async function getBuildings() {
-  return await db.query.buildings.findMany({
+  const allBuildings = await db.query.buildings.findMany({
     orderBy: [asc(buildings.sequenceOrder)],
   });
+
+  // Calculate total registered families/flats in each building
+  const flatCounts = await db
+    .select({
+      buildingId: floors.buildingId,
+      flatCount: sql<number>`count(distinct ${projectFamilies.id})`,
+    })
+    .from(projectFamilies)
+    .innerJoin(flats, eq(projectFamilies.flatId, flats.id))
+    .innerJoin(floors, eq(flats.floorId, floors.id))
+    .groupBy(floors.buildingId);
+
+  const flatCountMap = new Map(flatCounts.map((fc) => [fc.buildingId, Number(fc.flatCount)]));
+
+  return allBuildings.map((b) => ({
+    ...b,
+    flatCount: flatCountMap.get(b.id) || 0,
+  }));
 }
+
 
 const standardFloors = [
   { en: "Ground Floor", bn: "নিচ তলা" },
@@ -81,4 +100,30 @@ export async function getFloorsByBuilding(buildingId: string) {
     where: eq(floors.buildingId, buildingId),
     orderBy: [asc(floors.sequenceOrder)],
   });
+}
+
+export async function updateBuilding(id: string, data: { nameBn: string }) {
+  await db.update(buildings)
+    .set({ nameBn: data.nameBn })
+    .where(eq(buildings.id, id));
+  revalidatePath("/[locale]/buildings", "page");
+}
+
+export async function deleteBuilding(id: string) {
+  // Guard: if any projectFamilies reference flats in this building, block deletion
+  const pfRows = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(projectFamilies)
+    .innerJoin(flats, eq(projectFamilies.flatId, flats.id))
+    .innerJoin(floors, eq(flats.floorId, floors.id))
+    .where(eq(floors.buildingId, id));
+
+  if (Number(pfRows[0].count) > 0) {
+    throw new Error(
+      "এই বিল্ডিংয়ে সক্রিয় পরিবার রয়েছে। আগে পরিবারগুলো মুছে ফেলুন।"
+    );
+  }
+
+  await db.delete(buildings).where(eq(buildings.id, id));
+  revalidatePath("/[locale]/buildings", "page");
 }

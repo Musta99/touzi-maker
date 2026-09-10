@@ -43,8 +43,11 @@ export async function getTobrukList() {
     return {
       id: pf.id,
       headName: pf.headNameSnapshot,
+      buildingId: pf.flat.floor.building.id,
       buildingNameEn: pf.flat.floor.building.nameEn,
+      buildingNameBn: pf.flat.floor.building.nameBn,
       floorNameEn: pf.flat.floor.nameEn,
+      floorNameBn: pf.flat.floor.nameBn,
       flatName: pf.flat.name,
       hasPaid: pf.collections.some((c: any) => c.status === 'paid'),
       isDistributed: pf.tobrukDistributions.length > 0 && pf.tobrukDistributions[0].status === 'distributed',
@@ -57,6 +60,7 @@ export async function getTobrukList() {
     return a.flatName.localeCompare(b.flatName);
   });
 }
+
 
 export async function markTobrukDistributed(projectFamilyId: string) {
   // Check if it already exists

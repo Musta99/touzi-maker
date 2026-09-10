@@ -44,7 +44,7 @@ export class ReportGenerator {
 
     const tableBody = data.map((row, index) => [
       index + 1,
-      row.buildingNameEn,
+      row.buildingNameBn ? `${row.buildingNameBn} (${row.buildingNameEn})` : row.buildingNameEn,
       row.flatsCollected,
       `Tk. ${row.totalCollected.toLocaleString()}`
     ]);

@@ -9,29 +9,44 @@ export async function getDashboardStats() {
   const project = await getActiveProject();
   if (!project) return null;
 
-  const bRows = await db.select({ count: sql<number>`count(*)` }).from(buildings).where(eq(buildings.isActive, true));
-  const totalBuildings = bRows[0].count;
+  // Execute independent database queries concurrently in parallel
+  const [bRows, fRows, cRows, tRows] = await Promise.all([
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(buildings)
+      .where(eq(buildings.isActive, true)),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(projectFamilies)
+      .where(eq(projectFamilies.projectId, project.id)),
+    db
+      .select({ sum: sql<number>`sum(amount)` })
+      .from(collections)
+      .innerJoin(
+        projectFamilies,
+        eq(collections.projectFamilyId, projectFamilies.id)
+      )
+      .where(eq(projectFamilies.projectId, project.id)),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(tobrukDistributions)
+      .innerJoin(
+        projectFamilies,
+        eq(tobrukDistributions.projectFamilyId, projectFamilies.id)
+      )
+      .where(eq(projectFamilies.projectId, project.id)),
+  ]);
 
-  const fRows = await db.select({ count: sql<number>`count(*)` }).from(projectFamilies).where(eq(projectFamilies.projectId, project.id));
-  const totalFamilies = fRows[0].count;
-
-  const cRows = await db.select({ sum: sql<number>`sum(amount)` })
-    .from(collections)
-    .innerJoin(projectFamilies, eq(collections.projectFamilyId, projectFamilies.id))
-    .where(eq(projectFamilies.projectId, project.id));
-  
-  const totalCollection = cRows[0].sum || 0;
-
-  const tRows = await db.select({ count: sql<number>`count(*)` })
-    .from(tobrukDistributions)
-    .innerJoin(projectFamilies, eq(tobrukDistributions.projectFamilyId, projectFamilies.id))
-    .where(eq(projectFamilies.projectId, project.id));
-    
-  const tobrukCount = tRows[0].count;
-  const tobrukDistributed = totalFamilies > 0 ? Math.round((tobrukCount / totalFamilies) * 100) : 0;
+  const totalBuildings = bRows[0]?.count || 0;
+  const totalFamilies = fRows[0]?.count || 0;
+  const totalCollection = cRows[0]?.sum || 0;
+  const tobrukCount = tRows[0]?.count || 0;
+  const tobrukDistributed =
+    totalFamilies > 0 ? Math.round((tobrukCount / totalFamilies) * 100) : 0;
 
   return { totalBuildings, totalFamilies, totalCollection, tobrukDistributed };
 }
+
 
 export async function getCollectionChartData() {
   const project = await getActiveProject();

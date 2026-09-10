@@ -56,7 +56,8 @@ export default function ReportsPage() {
     try {
       const data = await getBuildingDetailReport(buildingId);
       const generator = new ReportGenerator();
-      generator.generateBuildingReport(data.projectNameEn, data.buildingNameEn, data.data);
+      const buildingTitle = data.buildingNameBn ? `${data.buildingNameBn} (${data.buildingNameEn})` : data.buildingNameEn;
+      generator.generateBuildingReport(data.projectNameEn, buildingTitle, data.data);
     } catch (e: any) {
       alert(e.message || "Failed to generate report");
     } finally {
@@ -183,22 +184,37 @@ function BuildingReportList({ onDownload, loadingId }: { onDownload: (id: string
 
   return (
     <ul className="divide-y divide-gray-100 dark:divide-gray-700">
-      {buildings.map(b => (
-        <li key={b.id} className="px-6 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+      {buildings.map((b) => (
+        <li
+          key={b.id}
+          className="px-6 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+        >
           <div>
-            <p className="font-medium text-gray-900 dark:text-white">{b.nameEn}</p>
-            <p className="text-sm text-gray-500 dark:text-gray-400">{b.floors.reduce((acc: number, f: any) => acc + f.flats.length, 0)} flats</p>
+            <p className="font-semibold text-gray-900 dark:text-white">
+              {b.nameBn}{" "}
+              <span className="text-sm font-normal text-gray-500 dark:text-gray-400">
+                ({b.nameEn})
+              </span>
+            </p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              {b.floors?.reduce((acc: number, f: any) => acc + f.flats.length, 0) || 0} flats
+            </p>
           </div>
-          <button 
+          <button
             onClick={() => onDownload(b.id)}
             disabled={loadingId === b.id}
             className="flex items-center text-primary text-sm font-medium hover:text-green-700 disabled:opacity-50"
           >
-            {loadingId === b.id ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Download className="h-4 w-4 mr-1" />}
-            Download
+            {loadingId === b.id ? (
+              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4 mr-1" />
+            )}
+            Download PDF
           </button>
         </li>
       ))}
     </ul>
   );
 }
+

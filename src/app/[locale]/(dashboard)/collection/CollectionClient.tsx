@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronRight, CheckCircle2, AlertCircle, Loader2, ArrowLeft } from "lucide-react";
+import { ChevronRight, CheckCircle2, AlertCircle, Loader2, ArrowLeft, Coins } from "lucide-react";
 import { getBuildingsWithProgress, recordCollection } from "@/app/actions/collections";
 import BanglaInput from "@/components/BanglaInput";
 
 type Flat = { id: string; name: string; sequenceOrder: number; families: { family: { headName: string } }[] };
 type Floor = { id: string; nameEn: string; nameBn: string; sequenceOrder: number; flats: Flat[] };
-type Building = { id: string; nameBn: string; nameEn: string; sequenceOrder: number; floors: Floor[] };
+type Building = { id: string; nameBn: string; nameEn: string; sequenceOrder: number; floors: Floor[]; totalEarned?: number; familyCount?: number; paidCount?: number };
 type Project = { id: string; nameEn: string; nameBn: string } | null;
 
 const QUICK_AMOUNTS = [200, 300, 500, 1000, 1500, 2000];
@@ -20,6 +20,7 @@ export default function CollectionClient({
   buildings: Building[];
 }) {
   const [step, setStep] = useState<"building" | "floor" | "flat" | "amount">("building");
+  const [searchTerm, setSearchTerm] = useState("");
   const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null);
   const [selectedFloor, setSelectedFloor] = useState<Floor | null>(null);
   const [selectedFlat, setSelectedFlat] = useState<Flat | null>(null);
@@ -122,37 +123,103 @@ export default function CollectionClient({
 
   // ─── Building Selection ───────────────────────────────────────────────────
   if (step === "building") {
+    const totalEarnedAll = buildings.reduce((sum, b) => sum + (b.totalEarned || 0), 0);
+
+    const filteredBuildings = buildings.filter((b) => {
+      const q = searchTerm.toLowerCase();
+      return (
+        (b.nameBn && b.nameBn.toLowerCase().includes(q)) ||
+        (b.nameEn && b.nameEn.toLowerCase().includes(q))
+      );
+    });
+
     return (
-      <div className="max-w-2xl mx-auto space-y-4">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Collection Mode</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{project.nameBn} — Select a building to start</p>
+      <div className="max-w-3xl mx-auto space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <Coins className="h-6 w-6 text-primary" />
+              বিল্ডিং অনুযায়ী আদায় (Collection per Building)
+            </h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              {project.nameBn} — Select a building to start collecting or review earnings
+            </p>
+          </div>
+          <div className="px-4 py-2 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 rounded-xl text-right">
+            <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">সর্বমোট আদায় (Total Earned)</p>
+            <p className="text-xl font-bold text-emerald-800 dark:text-emerald-300">
+              ৳{totalEarnedAll.toLocaleString()}
+            </p>
+          </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+        {/* ── Search Input with Bangla/English Language Switcher ── */}
+        <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm space-y-2">
+          <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            বিল্ডিং খুঁজুন (Search Building)
+          </label>
+          <BanglaInput
+            value={searchTerm}
+            onChange={setSearchTerm}
+            className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+            placeholder="Search building name (e.g. 'al mostafa' / 'আল মোস্তফা' or English)..."
+          />
+        </div>
+
+        {/* ── Building Earnings Cards List ── */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
           <ul className="divide-y divide-gray-100 dark:divide-gray-700">
-            {buildings.map((b, i) => (
-              <li key={b.id}>
-                <button
-                  onClick={() => { setSelectedBuilding(b); setStep("floor"); }}
-                  className="w-full flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-left"
-                >
-                  <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center flex-shrink-0">
-                    <span className="text-primary font-bold text-sm">{i + 1}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-gray-900 dark:text-white">{b.nameBn}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{b.nameEn} · {b.floors.reduce((acc, f) => acc + f.flats.length, 0)} flats</p>
-                  </div>
-                  <ChevronRight className="h-5 w-5 text-gray-400 flex-shrink-0" />
-                </button>
+            {filteredBuildings.length === 0 ? (
+              <li className="p-8 text-center text-gray-500 dark:text-gray-400 text-sm">
+                No buildings match "{searchTerm}". Try searching in English or Bangla mode.
               </li>
-            ))}
+            ) : (
+              filteredBuildings.map((b, i) => (
+                <li key={b.id}>
+                  <button
+                    onClick={() => {
+                      setSelectedBuilding(b);
+                      setStep("floor");
+                    }}
+                    className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-left group"
+                  >
+                    <div className="flex items-center gap-4 min-w-0">
+                      <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center shrink-0">
+                        <span className="text-primary font-bold text-sm">{i + 1}</span>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-bold text-gray-900 dark:text-white text-base group-hover:text-primary transition-colors">
+                          {b.nameBn}
+                          <span className="text-sm font-normal text-gray-500 dark:text-gray-400 ml-2">
+                            ({b.nameEn})
+                          </span>
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                          {b.familyCount || 0} Families · {b.floors?.length || 0} Floors
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-4 shrink-0">
+                      {/* Total Earned Badge */}
+                      <div className="text-right">
+                        <p className="text-xs text-gray-400 font-medium">আদায় (Earned)</p>
+                        <p className="text-base font-bold text-emerald-600 dark:text-emerald-400">
+                          ৳{(b.totalEarned || 0).toLocaleString()}
+                        </p>
+                      </div>
+                      <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-primary transition-colors" />
+                    </div>
+                  </button>
+                </li>
+              ))
+            )}
           </ul>
         </div>
       </div>
     );
   }
+
 
   // ─── Floor Selection ──────────────────────────────────────────────────────
   if (step === "floor" && selectedBuilding) {

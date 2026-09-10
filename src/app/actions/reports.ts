@@ -96,6 +96,7 @@ export async function getBuildingDetailReport(buildingId: string) {
   return {
     projectNameEn: project.nameEn,
     buildingNameEn: building.nameEn,
+    buildingNameBn: building.nameBn,
     data: reportData
   };
 }

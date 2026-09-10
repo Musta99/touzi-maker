@@ -3,7 +3,8 @@ import { buildings } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import BuildingDetailClient from "./BuildingDetailClient";
 import { notFound } from "next/navigation";
-import { getFloors, getFlats } from "@/app/actions/floors";
+import { getFloors } from "@/app/actions/floors";
+import { getFamiliesByBuilding } from "@/app/actions/families";
 
 export default async function BuildingDetailPage(props: {
   params: Promise<{ id: string; locale: string }>;
@@ -19,17 +20,14 @@ export default async function BuildingDetailPage(props: {
   }
 
   const floorsData = await getFloors(id);
-  const floorsWithFlats = await Promise.all(
-    floorsData.map(async (floor) => {
-      const flats = await getFlats(floor.id);
-      return { ...floor, flats };
-    })
-  );
+  const initialFamilies = await getFamiliesByBuilding(id);
 
   return (
     <BuildingDetailClient 
       building={buildingData as any} 
-      floors={floorsWithFlats as any} 
+      floors={floorsData as any} 
+      initialFamilies={initialFamilies as any}
     />
   );
 }
+

@@ -19,18 +19,35 @@ export async function getBuildingsWithProgress(projectId: string) {
     orderBy: [buildings.sequenceOrder],
   });
 
-  // Get collection counts per building
-  const collectionData = await db
+  // Calculate earnings and family counts per building for active project
+  const pfData = await db
     .select({
-      projectFamilyId: projectFamilies.id,
-      flatId: projectFamilies.flatId,
+      buildingId: floors.buildingId,
+      familyId: projectFamilies.familyId,
+      collectedAmount: collections.amount,
     })
     .from(projectFamilies)
+    .innerJoin(flats, eq(projectFamilies.flatId, flats.id))
+    .innerJoin(floors, eq(flats.floorId, floors.id))
     .leftJoin(collections, eq(collections.projectFamilyId, projectFamilies.id))
     .where(eq(projectFamilies.projectId, projectId));
 
-  return allBuildings;
+  return allBuildings.map((b) => {
+    const bRows = pfData.filter((r) => r.buildingId === b.id);
+    const totalEarned = bRows.reduce((sum, r) => sum + (r.collectedAmount || 0), 0);
+    // Unique family count
+    const uniqueFamilies = new Set(bRows.map((r) => r.familyId)).size;
+    const paidCount = bRows.filter((r) => (r.collectedAmount || 0) > 0).length;
+
+    return {
+      ...b,
+      totalEarned,
+      familyCount: uniqueFamilies,
+      paidCount,
+    };
+  });
 }
+
 
 export async function getFloorWithFlats(buildingId: string, projectId: string) {
   const floorsData = await db.query.floors.findMany({

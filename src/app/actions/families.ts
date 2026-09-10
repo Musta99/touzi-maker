@@ -93,38 +93,37 @@ export async function getFamilies() {
   const project = await getActiveProject();
   if (!project) return [];
 
-  // Step 1: get projectFamilies with family + collections
+  // Single optimized query with relational nested joins
   const rows = await db.query.projectFamilies.findMany({
     where: eq(projectFamilies.projectId, project.id),
     with: {
       family: true,
       collections: true,
+      flat: {
+        with: {
+          floor: {
+            with: {
+              building: true,
+            },
+          },
+        },
+      },
     },
     orderBy: (pf, { asc }) => [asc(pf.headNameSnapshot)],
   });
 
-  // Step 2: for each row, fetch flat → floor → building separately
-  const results = await Promise.all(rows.map(async row => {
-    const paid = row.collections.find(c => c.status === 'paid');
+  return rows.map((row) => {
+    const paid = row.collections.find((c) => c.status === "paid");
     let tobrukPackages: { amount: number; qty: number }[] = [];
     if (paid?.tobrukPackageBreakdown) {
-      try { tobrukPackages = JSON.parse(paid.tobrukPackageBreakdown); } catch {}
+      try {
+        tobrukPackages = JSON.parse(paid.tobrukPackageBreakdown);
+      } catch {}
     }
 
-    // Get flat
-    const flat = await db.query.flats.findFirst({
-      where: eq(flats.id, row.flatId),
-    });
-
-    // Get floor
-    const floorRecord = flat ? await db.query.floors.findFirst({
-      where: (f, { eq: eqF }) => eqF(f.id, flat.floorId),
-    }) : null;
-
-    // Get building
-    const building = floorRecord ? await db.query.buildings.findFirst({
-      where: (b, { eq: eqB }) => eqB(b.id, floorRecord.buildingId),
-    }) : null;
+    const flat = row.flat;
+    const floorRecord = flat?.floor;
+    const building = floorRecord?.building;
 
     return {
       id: row.family.id,
@@ -142,10 +141,15 @@ export async function getFamilies() {
       amount: paid?.amount ?? 0,
       tobrukPackages,
     };
-  }));
-
-  return results;
+  });
 }
+
+
+export async function getFamiliesByBuilding(buildingId: string) {
+  const allFamilies = await getFamilies();
+  return allFamilies.filter((f) => f.buildingId === buildingId);
+}
+
 
 export async function updateFamily(data: {
   id: string;
@@ -223,4 +227,27 @@ export async function updateFamily(data: {
   revalidatePath('/[locale]/reports', 'page');
   return true;
 }
+
+export async function deleteFamily(familyId: string, projectFamilyId: string) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error('Unauthorized');
+
+  // 1. Delete associated collections for this projectFamily
+  await db.delete(collections).where(eq(collections.projectFamilyId, projectFamilyId));
+
+  // 2. Delete projectFamily record
+  await db.delete(projectFamilies).where(eq(projectFamilies.id, projectFamilyId));
+
+  // 3. Delete flatFamilies link
+  await db.delete(flatFamilies).where(eq(flatFamilies.familyId, familyId));
+
+  // 4. Delete main family record
+  await db.delete(families).where(eq(families.id, familyId));
+
+  revalidatePath('/[locale]/families', 'page');
+  revalidatePath('/[locale]', 'page');
+  revalidatePath('/[locale]/reports', 'page');
+  return true;
+}
+
 
