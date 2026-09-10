@@ -15,16 +15,26 @@ export async function getCollectionSummaryReport() {
     orderBy: [buildings.sequenceOrder],
   });
 
-  // Get all collections for this project
+  // Get all paid collections for this project (project-scoped at DB level)
   const allCollections = await db.query.collections.findMany({
     with: {
       projectFamily: {
         with: { flat: { with: { floor: true } } }
       }
-    }
+    },
+    where: (col, { exists, and }) =>
+      exists(
+        db.select().from(projectFamilies)
+          .where(
+            and(
+              eq(projectFamilies.id, col.projectFamilyId),
+              eq(projectFamilies.projectId, project.id)
+            )
+          )
+      )
   });
 
-  const collectionsForProject = allCollections.filter(c => c.projectFamily.projectId === project.id && c.status === 'paid');
+  const collectionsForProject = allCollections.filter(c => c.status === 'paid');
 
   const reportData = allBuildings.map(building => {
     // Find collections belonging to this building
@@ -141,10 +151,21 @@ export async function getBuildingRangeReport(startBuildingId: string, endBuildin
     orderBy: [buildings.sequenceOrder]
   });
 
-  const pfData = await db.query.projectFamilies.findMany({
-    where: eq(projectFamilies.projectId, project.id),
-    with: { collections: true }
-  });
+  // Collect all flatIds from the buildings in range (already fetched above)
+  const flatIdsInRange = buildingsData.flatMap(b =>
+    b.floors.flatMap(fl => fl.flats.map(f => f.id))
+  );
+
+  const pfData = flatIdsInRange.length > 0
+    ? await db.query.projectFamilies.findMany({
+        where: (pf, { and, inArray }) =>
+          and(
+            eq(pf.projectId, project.id),
+            inArray(pf.flatId, flatIdsInRange)
+          ),
+        with: { collections: true },
+      })
+    : [];
 
   const reportData = [];
 

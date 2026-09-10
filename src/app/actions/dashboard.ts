@@ -58,8 +58,6 @@ export async function getDashboardStats() {
 }
 
 export async function getAreaStats(projectId: string) {
-  const allAreas = await db.query.areas.findMany();
-  
   const pfRows = await db.select({
     areaId: buildings.areaId,
     areaNameBn: sql<string>`coalesce(areas.name_bn, 'অন্যান্য এলাকা')`,

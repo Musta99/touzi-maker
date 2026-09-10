@@ -151,8 +151,55 @@ export async function getFamilies() {
 
 
 export async function getFamiliesByBuilding(buildingId: string) {
-  const allFamilies = await getFamilies();
-  return allFamilies.filter((f) => f.buildingId === buildingId);
+  const project = await getActiveProject();
+  if (!project) return [];
+
+  const rows = await db.query.projectFamilies.findMany({
+    where: eq(projectFamilies.projectId, project.id),
+    with: {
+      family: true,
+      collections: true,
+      flat: {
+        with: {
+          floor: {
+            with: { building: true },
+          },
+        },
+      },
+    },
+    orderBy: (pf, { asc }) => [asc(pf.headNameSnapshot)],
+  });
+
+  // Filter at JS level only on the pre-joined building id
+  const filtered = rows.filter(row => row.flat?.floor?.buildingId === buildingId);
+
+  return filtered.map((row) => {
+    const paid = row.collections.find((c) => c.status === "paid");
+    let tobrukPackages: { amount: number; qty: number }[] = [];
+    if (paid?.tobrukPackageBreakdown) {
+      try { tobrukPackages = JSON.parse(paid.tobrukPackageBreakdown); } catch {}
+    }
+    const flat = row.flat;
+    const floorRecord = flat?.floor;
+    const building = floorRecord?.building;
+    return {
+      id: row.family.id,
+      projectFamilyId: row.id,
+      collectionId: paid?.id ?? null,
+      headName: row.family.headName,
+      mobile: row.family.mobile,
+      buildingId: building?.id ?? null,
+      buildingNameEn: building?.nameEn ?? null,
+      buildingNameBn: building?.nameBn ?? null,
+      floorId: floorRecord?.id ?? null,
+      floorNameEn: floorRecord?.nameEn ?? null,
+      floorNameBn: floorRecord?.nameBn ?? null,
+      sideLocation: flat?.name ?? null,
+      amount: paid?.amount ?? 0,
+      tobrukPackages,
+      isJomidar: row.isOwnerSnapshot ?? false,
+    };
+  });
 }
 
 
