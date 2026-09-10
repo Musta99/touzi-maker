@@ -213,11 +213,10 @@ export default function BuildingsClient({
       <div className="flex flex-col sm:flex-row gap-4 justify-between items-stretch sm:items-center">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input
-            type="text"
-            placeholder="বিল্ডিং এর নাম বা এলাকা অনুসন্ধান করুন..."
+          <BanglaInput
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={setSearchTerm}
+            placeholder="বিল্ডিং এর নাম বা এলাকা অনুসন্ধান করুন... (foj monsion)"
             className="w-full pl-10 pr-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
           />
         </div>
@@ -611,6 +610,70 @@ export default function BuildingsClient({
                   <Trash2 className="w-4 h-4" />
                 )}
                 {deleting ? "মুছছে..." : "হ্যাঁ, মুছুন"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Add Area Modal ──────────────────────────────────────────── */}
+      {showAddAreaModal && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-sm mx-4 border border-gray-200 dark:border-gray-700 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-emerald-50 dark:bg-emerald-900/20">
+              <h2 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <Plus className="h-5 w-5 text-emerald-600" />
+                নতুন এলাকা যোগ করুন
+              </h2>
+              <button
+                onClick={() => setShowAddAreaModal(false)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="px-6 py-5 space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  এলাকার নাম (বাংলা) <span className="text-red-500">*</span>
+                </label>
+                <BanglaInput
+                  value={newAreaNameBn}
+                  onChange={setNewAreaNameBn}
+                  placeholder="যেমন: মৌসুমী আ/এ বা mousumi r/a"
+                  className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Area Name (English - optional)
+                </label>
+                <input
+                  type="text"
+                  value={newAreaNameEn}
+                  onChange={(e) => setNewAreaNameEn(e.target.value)}
+                  placeholder="e.g. Mousumi R/A"
+                  className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-white"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 px-6 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+              <button
+                onClick={() => setShowAddAreaModal(false)}
+                className="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200"
+              >
+                বাতিল
+              </button>
+              <button
+                onClick={handleAddNewArea}
+                disabled={!newAreaNameBn.trim() || addingArea}
+                className="px-4 py-1.5 text-xs font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50 flex items-center gap-1.5"
+              >
+                {addingArea ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                সংরক্ষণ করুন
               </button>
             </div>
           </div>

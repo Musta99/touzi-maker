@@ -47,6 +47,7 @@ type Family = {
   sideLocation: string | null;
   amount: number;
   tobrukPackages: { amount: number; qty: number }[];
+  isJomidar: boolean;
 };
 
 export default function BuildingDetailClient({
@@ -70,6 +71,7 @@ export default function BuildingDetailClient({
   const [floorId, setFloorId] = useState("");
   const [sideLocation, setSideLocation] = useState("");
   const [amount, setAmount] = useState<number | "">("");
+  const [isJomidar, setIsJomidar] = useState(false);
   const [tobrukBreakdown, setTobrukBreakdown] = useState<
     { amount: number | ""; qty: number | "" }[]
   >([]);
@@ -83,6 +85,7 @@ export default function BuildingDetailClient({
   const [editFloorId, setEditFloorId] = useState("");
   const [editSideLocation, setEditSideLocation] = useState("");
   const [editAmount, setEditAmount] = useState<number | "">("");
+  const [editIsJomidar, setEditIsJomidar] = useState(false);
   const [editBreakdown, setEditBreakdown] = useState<
     { amount: number | ""; qty: number | "" }[]
   >([]);
@@ -169,6 +172,7 @@ export default function BuildingDetailClient({
     setEditFloorId(fam.floorId || "");
     setEditSideLocation(fam.sideLocation || "");
     setEditAmount(fam.amount || "");
+    setEditIsJomidar(fam.isJomidar ?? false);
     setEditBreakdown(
       fam.tobrukPackages.map((p) => ({ amount: p.amount, qty: p.qty }))
     );
@@ -196,6 +200,7 @@ export default function BuildingDetailClient({
         floorId,
         sideLocation,
         amount: Number(amount),
+        isJomidar,
         tobrukPackageBreakdown:
           validBreakdown.length > 0
             ? validBreakdown.map((r) => ({
@@ -214,6 +219,7 @@ export default function BuildingDetailClient({
       setMobile("");
       setSideLocation("");
       setAmount("");
+      setIsJomidar(false);
       setTobrukBreakdown([]);
 
       setTimeout(() => setSuccessBanner(null), 4000);
@@ -247,6 +253,7 @@ export default function BuildingDetailClient({
         floorId: editFloorId,
         sideLocation: editSideLocation,
         amount: Number(editAmount),
+        isJomidar: editIsJomidar,
         tobrukPackageBreakdown:
           validBreakdown.length > 0
             ? validBreakdown.map((r) => ({
@@ -504,6 +511,22 @@ export default function BuildingDetailClient({
                   )}
                 </div>
 
+                {/* Jomidar checkbox — ADD */}
+                <label className="flex items-center gap-3 cursor-pointer select-none p-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20">
+                  <input
+                    type="checkbox"
+                    checked={isJomidar}
+                    onChange={(e) => setIsJomidar(e.target.checked)}
+                    className="w-4 h-4 rounded accent-amber-500"
+                  />
+                  <span className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+                    👑 জমিদার (বাড়ির মালিক)
+                  </span>
+                  <span className="text-xs text-amber-600 dark:text-amber-400 ml-auto">
+                    রিপোর্টে গাঢ় হবে
+                  </span>
+                </label>
+
                 <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
                   <Dialog.Close asChild>
                     <button
@@ -585,9 +608,16 @@ export default function BuildingDetailClient({
                 filteredFamilies.map((fam) => (
                   <tr
                     key={fam.id}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                    className={`transition-colors ${
+                      fam.isJomidar
+                        ? "bg-amber-50/60 dark:bg-amber-900/10 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                        : "hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                    }`}
                   >
-                    <td className="px-4 py-3 whitespace-nowrap text-sm font-semibold text-gray-900 dark:text-white">
+                    <td className={`px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white ${
+                      fam.isJomidar ? "font-bold" : "font-semibold"
+                    }`}>
+                      {fam.isJomidar && <span className="mr-1">👑</span>}
                       {fam.headName || <span className="text-gray-400 italic">—</span>}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
@@ -768,6 +798,22 @@ export default function BuildingDetailClient({
                   />
                 )}
               </div>
+
+              {/* Jomidar checkbox — EDIT */}
+              <label className="flex items-center gap-3 cursor-pointer select-none p-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20">
+                <input
+                  type="checkbox"
+                  checked={editIsJomidar}
+                  onChange={(e) => setEditIsJomidar(e.target.checked)}
+                  className="w-4 h-4 rounded accent-amber-500"
+                />
+                <span className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+                  👑 জমিদার (বাড়ির মালিক)
+                </span>
+                <span className="text-xs text-amber-600 dark:text-amber-400 ml-auto">
+                  রিপোর্টে গাঢ় হবে
+                </span>
+              </label>
 
               <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
                 <Dialog.Close asChild>

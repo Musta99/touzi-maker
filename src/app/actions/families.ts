@@ -15,7 +15,8 @@ export async function registerFamilyAndCollect(data: {
   floorId: string;
   sideLocation: string;
   amount: number;
-  tobrukPackageBreakdown?: { amount: number; qty: number }[]; // optional override
+  isJomidar?: boolean;
+  tobrukPackageBreakdown?: { amount: number; qty: number }[];
 }) {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
@@ -58,7 +59,7 @@ export async function registerFamilyAndCollect(data: {
   await db.insert(flatFamilies).values({
     flatId: flat.id,
     familyId: newFamily.id,
-    isOwner: false,
+    isOwner: data.isJomidar ?? false,
     sideLocation: data.sideLocation,
   });
 
@@ -68,6 +69,7 @@ export async function registerFamilyAndCollect(data: {
     familyId: newFamily.id,
     flatId: flat.id,
     headNameSnapshot: data.headName,
+    isOwnerSnapshot: data.isJomidar ?? false,
     sideLocationSnapshot: data.sideLocation,
   }).returning();
 
@@ -140,6 +142,7 @@ export async function getFamilies() {
       sideLocation: flat?.name ?? null,
       amount: paid?.amount ?? 0,
       tobrukPackages,
+      isJomidar: row.isOwnerSnapshot ?? false,
     };
   });
 }
@@ -161,6 +164,7 @@ export async function updateFamily(data: {
   floorId: string;
   sideLocation: string;
   amount: number;
+  isJomidar?: boolean;
   tobrukPackageBreakdown?: { amount: number; qty: number }[];
 }) {
   const session = await auth();
@@ -199,6 +203,7 @@ export async function updateFamily(data: {
   await db.update(projectFamilies)
     .set({
       headNameSnapshot: data.headName,
+      isOwnerSnapshot: data.isJomidar ?? false,
       sideLocationSnapshot: data.sideLocation,
       flatId: flat.id,
     })

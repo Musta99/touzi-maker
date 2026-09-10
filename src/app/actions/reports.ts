@@ -87,6 +87,7 @@ export async function getBuildingDetailReport(buildingId: string) {
         floorNameBn: floor.nameBn,
         flatName: flat.name,
         headName: pf?.headNameSnapshot || "Unknown",
+        isJomidar: pf?.isOwnerSnapshot ?? false,
         status: isPaid ? "Paid" : "Pending",
         amount
       });
@@ -129,6 +130,7 @@ export async function getBuildingRangeReport(startBuildingId: string, endBuildin
   const buildingsData = await db.query.buildings.findMany({
     where: (buildings, { inArray }) => inArray(buildings.id, buildingIds),
     with: {
+      area: true,
       floors: {
         orderBy: (floors, { asc }) => [asc(floors.sequenceOrder)],
         with: {
@@ -168,10 +170,12 @@ export async function getBuildingRangeReport(startBuildingId: string, endBuildin
         reportData.push({
           buildingNameEn: building.nameEn,
           buildingNameBn: building.nameBn,
+          areaNameBn: building.area?.nameBn || null,
           floorNameEn: floor.nameEn,
           floorNameBn: floor.nameBn,
           flatName: flat.name,
           headName: pf?.headNameSnapshot || "Unknown",
+          isJomidar: pf?.isOwnerSnapshot ?? false,
           status: "Paid",
           amount,
           tobrukPackages

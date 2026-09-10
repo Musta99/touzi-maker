@@ -106,11 +106,11 @@ export class ReportGenerator {
 
   public async generateBuildingRangeReport(projectName: string, rangeName: string, data: any[]) {
     // ── Group rows by building ────────────────────────────────────────
-    const buildingMap = new Map<string, { nameBn: string; nameEn: string; rows: any[] }>();
+    const buildingMap = new Map<string, { nameBn: string; nameEn: string; areaNameBn: string | null; rows: any[] }>();
     for (const row of data) {
       const key = row.buildingNameEn;
       if (!buildingMap.has(key)) {
-        buildingMap.set(key, { nameBn: row.buildingNameBn || row.buildingNameEn, nameEn: row.buildingNameEn, rows: [] });
+        buildingMap.set(key, { nameBn: row.buildingNameBn || row.buildingNameEn, nameEn: row.buildingNameEn, areaNameBn: row.areaNameBn || null, rows: [] });
       }
       buildingMap.get(key)!.rows.push(row);
     }
@@ -137,25 +137,32 @@ export class ReportGenerator {
           packageSummary.set(p.amount, (packageSummary.get(p.amount) || 0) + p.qty);
         }
         const pkgStr = packages.length > 0 ? packages.map(p => `${p.amount}×${p.qty}`).join("<br/>") : "—";
+        const isJomidar = row.isJomidar === true;
         const isPaid = row.status === "Paid";
         const isDummy = row.status === "—";
+        const rowStyle = isJomidar
+          ? "border-bottom: 1px solid #e5e7eb; background:#fffbeb; font-weight:700;"
+          : "border-bottom: 1px solid #e5e7eb;";
+        const headDisplay = isJomidar ? `👑 ${row.headName}` : row.headName;
 
-        rowsHtml += `<tr style="border-bottom: 1px solid #e5e7eb;">
+        rowsHtml += `<tr style="${rowStyle}">
           <td style="text-align:center; padding: 10px 5px;">${rowIndex++}</td>
           <td style="padding: 10px 5px;">${row.floorNameBn || row.floorNameEn}</td>
           <td style="padding: 10px 5px;">${row.flatName}</td>
-          <td style="padding: 10px 5px;">${row.headName}</td>
+          <td style="padding: 10px 5px;">${headDisplay}</td>
           <td style="padding: 10px 5px; font-weight:600; color:${isDummy ? '#6b7280' : (isPaid ? '#16a34a' : '#b45309')}">${isDummy ? '—' : (isPaid ? 'পরিশোধিত' : 'বাকি')}</td>
           <td style="padding: 10px 5px; text-align:right;">৳${row.amount > 0 ? row.amount.toLocaleString() : '—'}</td>
           <td style="padding: 10px 5px; text-align:center;">${pkgStr}</td>
         </tr>`;
       }
 
+
       buildingHtml += `
         <div style="margin-bottom:24px">
-          <h3 style="color:#166534;font-size:16px;margin:0 0 6px 0;padding:6px 0;border-bottom:2px solid #16a34a">
-            ${buildingIndex++}. ${building.nameBn}
-          </h3>
+          <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:2px solid #16a34a;margin-bottom:6px">
+            <span style="color:#166534;font-size:16px;font-weight:700">${buildingIndex++}. ${building.nameBn}</span>
+            ${building.areaNameBn ? `<span style="font-size:11px;font-weight:500;background:#dbeafe;color:#1d4ed8;padding:2px 9px;border-radius:99px">${building.areaNameBn}</span>` : ""}
+          </div>
           <table style="width:100%;border-collapse:collapse;font-size:12px">
             <thead>
               <tr style="background:#16a34a;color:white">
@@ -209,8 +216,11 @@ export class ReportGenerator {
                   width:794px;padding:40px;background:white;color:#1f2937;box-sizing:border-box">
         <h1 style="text-align:center;font-size:22px;margin:0 0 4px 0">ভাড়াটিয়ার তালিকা</h1>
         <h2 style="text-align:center;font-size:15px;margin:0 0 4px 0;font-weight:500">Building Range Detail Report</h2>
+        <p style="text-align:center;font-size:14px;color:#111827;font-weight:700;margin:0 0 4px 0">
+          রেঞ্জ: ${rangeName}
+        </p>
         <p style="text-align:center;font-size:11px;color:#6b7280;margin:0 0 24px 0">
-          রেঞ্জ: ${rangeName} | প্রকল্প: ${projectName} | তারিখ: ${date}
+          প্রকল্প: ${projectName} | তারিখ: ${date}
         </p>
         ${buildingHtml}
         ${summaryHtml}
