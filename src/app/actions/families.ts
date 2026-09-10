@@ -21,8 +21,8 @@ export async function registerFamilyAndCollect(data: {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
   
-  // Server-side validation: if breakdown provided, its total must equal amount
-  if (data.tobrukPackageBreakdown && data.tobrukPackageBreakdown.length > 0) {
+  // Server-side validation: if breakdown provided and amount > 0, its total must equal amount
+  if (data.amount > 0 && data.tobrukPackageBreakdown && data.tobrukPackageBreakdown.length > 0) {
     const breakdownTotal = data.tobrukPackageBreakdown.reduce((sum, row) => sum + row.amount * row.qty, 0);
     if (breakdownTotal !== data.amount) {
       throw new Error(`Tobruk breakdown total (৳${breakdownTotal}) must equal amount paid (৳${data.amount}).`);
@@ -73,16 +73,18 @@ export async function registerFamilyAndCollect(data: {
     sideLocationSnapshot: data.sideLocation,
   }).returning();
 
-  // 5. Record Collection
-  await db.insert(collections).values({
-    projectFamilyId: pf.id,
-    amount: data.amount,
-    status: 'paid',
-    collectedById: session.user.id,
-    tobrukPackageBreakdown: data.tobrukPackageBreakdown && data.tobrukPackageBreakdown.length > 0
-      ? JSON.stringify(data.tobrukPackageBreakdown)
-      : null,
-  });
+  // 5. Record Collection (only if amount provided)
+  if (data.amount > 0) {
+    await db.insert(collections).values({
+      projectFamilyId: pf.id,
+      amount: data.amount,
+      status: 'paid',
+      collectedById: session.user.id,
+      tobrukPackageBreakdown: data.tobrukPackageBreakdown && data.tobrukPackageBreakdown.length > 0
+        ? JSON.stringify(data.tobrukPackageBreakdown)
+        : null,
+    });
+  }
 
   revalidatePath("/[locale]/families", "page");
   revalidatePath("/[locale]/receipts", "page");
@@ -170,8 +172,8 @@ export async function updateFamily(data: {
   const session = await auth();
   if (!session?.user?.id) throw new Error('Unauthorized');
 
-  // Validate breakdown
-  if (data.tobrukPackageBreakdown && data.tobrukPackageBreakdown.length > 0) {
+  // Validate breakdown only if amount > 0
+  if (data.amount > 0 && data.tobrukPackageBreakdown && data.tobrukPackageBreakdown.length > 0) {
     const total = data.tobrukPackageBreakdown.reduce((s, r) => s + r.amount * r.qty, 0);
     if (total !== data.amount) throw new Error(`Breakdown total (৳${total}) must equal amount paid (৳${data.amount}).`);
   }
@@ -210,21 +212,23 @@ export async function updateFamily(data: {
     .where(eq(projectFamilies.id, data.projectFamilyId));
 
   // 5. Update collection
-  const breakdownJson = data.tobrukPackageBreakdown && data.tobrukPackageBreakdown.length > 0
+  const breakdownJson = data.amount > 0 && data.tobrukPackageBreakdown && data.tobrukPackageBreakdown.length > 0
     ? JSON.stringify(data.tobrukPackageBreakdown) : null;
 
-  if (data.collectionId) {
-    await db.update(collections)
-      .set({ amount: data.amount, tobrukPackageBreakdown: breakdownJson })
-      .where(eq(collections.id, data.collectionId));
-  } else {
-    await db.insert(collections).values({
-      projectFamilyId: data.projectFamilyId,
-      amount: data.amount,
-      status: 'paid',
-      collectedById: session.user.id,
-      tobrukPackageBreakdown: breakdownJson,
-    });
+  if (data.amount > 0) {
+    if (data.collectionId) {
+      await db.update(collections)
+        .set({ amount: data.amount, tobrukPackageBreakdown: breakdownJson })
+        .where(eq(collections.id, data.collectionId));
+    } else {
+      await db.insert(collections).values({
+        projectFamilyId: data.projectFamilyId,
+        amount: data.amount,
+        status: 'paid',
+        collectedById: session.user.id,
+        tobrukPackageBreakdown: breakdownJson,
+      });
+    }
   }
 
   revalidatePath('/[locale]/families', 'page');

@@ -202,8 +202,8 @@ export default function FamiliesClient({
   // ── Submit: Add ─────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!buildingId || !floorId || !sideLocation || !amount) {
-      alert("Building, Floor, Side of Floor and Amount are required.");
+    if (!buildingId || !floorId || !sideLocation) {
+      alert("Building, Floor, and Flat Location are required.");
       return;
     }
     setIsSubmitting(true);
@@ -217,7 +217,7 @@ export default function FamiliesClient({
         buildingId,
         floorId,
         sideLocation,
-        amount: Number(amount),
+        amount: Number(amount || 0),
         isJomidar,
         tobrukPackageBreakdown:
           validBreakdown.length > 0
@@ -247,8 +247,8 @@ export default function FamiliesClient({
   // ── Submit: Edit ────────────────────────────────────────────────
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editFamily || !editBuildingId || !editFloorId || !editSideLocation || !editAmount) {
-      alert("Building, Floor, Side of Floor and Amount are required.");
+    if (!editFamily || !editBuildingId || !editFloorId || !editSideLocation) {
+      alert("Building, Floor, and Flat Location are required.");
       return;
     }
     setEditSubmitting(true);
@@ -265,7 +265,7 @@ export default function FamiliesClient({
         buildingId: editBuildingId,
         floorId: editFloorId,
         sideLocation: editSideLocation,
-        amount: Number(editAmount),
+        amount: Number(editAmount || 0),
         isJomidar: editIsJomidar,
         tobrukPackageBreakdown:
           validBreakdown.length > 0
@@ -533,7 +533,8 @@ export default function FamiliesClient({
                 {/* Amount — auto-calculated or manual */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Amount Given (৳) <span className="text-red-500">*</span>
+                    Amount Given (৳){" "}
+                    <span className="text-gray-400 font-normal text-xs">(Optional — can fill later)</span>
                   </label>
                   {hasBreakdown ? (
                     <div className="w-full px-3 py-2.5 border border-emerald-300 dark:border-emerald-700 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-between">
@@ -547,13 +548,12 @@ export default function FamiliesClient({
                     </div>
                   ) : (
                     <input
-                      required
                       type="number"
-                      min="1"
+                      min="0"
                       value={amount}
                       onChange={(e) => setAmount(Number(e.target.value))}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
-                      placeholder="e.g. 500"
+                      placeholder="e.g. 500 (leave blank to fill later)"
                     />
                   )}
                 </div>
@@ -830,7 +830,8 @@ export default function FamiliesClient({
               {/* Amount — auto-calculated or manual */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  পরিমাণ (৳) <span className="text-red-500">*</span>
+                  পরিমাণ (৳){" "}
+                  <span className="text-gray-400 font-normal text-xs">(বাদ্দিযোগ্য — পরে যোগ করা যাবে)</span>
                 </label>
                 {editHasBreakdown ? (
                   <div className="w-full px-3 py-2.5 border border-emerald-300 dark:border-emerald-700 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-between">
@@ -844,9 +845,8 @@ export default function FamiliesClient({
                   </div>
                 ) : (
                   <input
-                    required
                     type="number"
-                    min="1"
+                    min="0"
                     value={editAmount}
                     onChange={(e) => setEditAmount(Number(e.target.value))}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
